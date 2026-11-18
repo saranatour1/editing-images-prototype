@@ -1,0 +1,6 @@
+.app { display: flex; height: 100vh; }
+aside { width: 260px; flex-shrink: 0; padding: 16px; background: #1b1b1b; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+main { flex: 1; min-width: 0; display: grid; place-items: center; padding: 24px; }
+.empty { color: #777; }
+.hint { color: #888; font-size: 12px; margin: 4px 0; }
+.actions { margin-top: auto; display: grid; gap: 8px; }
