@@ -1,9 +1,10 @@
 import { useRef, type CSSProperties, type FocusEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import { fontStack } from '../lib/canvas.ts'
-import type { Layer, LayerPatch } from '../types.ts'
+import type { ContainMode, Layer, LayerPatch } from '../types.ts'
 
 type Props = {
   layer: Layer
+  mode: ContainMode
   selected: boolean
   editing: boolean
   onSelect: () => void
@@ -12,7 +13,8 @@ type Props = {
   onRemove: () => void
 }
 
-type Drag = { dx: number; dy: number; halfW: number; halfH: number; stage: DOMRect }
+// Pointer and layer position at drag start; pad = how close (in %) the center may get to an edge.
+type Drag = { px: number; py: number; x: number; y: number; stage: DOMRect; padX: number; padY: number }
 
 const clamp = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.min(Math.max(v, lo), hi))
 
@@ -23,7 +25,7 @@ const focusAndSelectAll = (el: HTMLElement | null) => {
   getSelection()?.selectAllChildren(el)
 }
 
-export default function LayerItem({ layer, selected, editing, onSelect, onEdit, onChange, onRemove }: Props) {
+export default function LayerItem({ layer, mode, selected, editing, onSelect, onEdit, onChange, onRemove }: Props) {
   const drag = useRef<Drag | null>(null)
 
   function startDrag(e: PointerEvent<HTMLDivElement>) {
@@ -31,24 +33,29 @@ export default function LayerItem({ layer, selected, editing, onSelect, onEdit, 
     onSelect()
     const stage = e.currentTarget.parentElement
     if (editing || !stage) return
-    const box = e.currentTarget.getBoundingClientRect()
+    const area = stage.getBoundingClientRect()
+    // JavaScript tab: measure the item so its center stays half its size away from the edges.
+    // CSS tab: no measuring, the stylesheet's translate: clamp() keeps the box inside.
+    const box = mode === 'js' ? e.currentTarget.getBoundingClientRect() : null
     drag.current = {
-      dx: e.clientX - (box.left + box.width / 2),
-      dy: e.clientY - (box.top + box.height / 2),
-      halfW: box.width / 2,
-      halfH: box.height / 2,
-      stage: stage.getBoundingClientRect(),
+      px: e.clientX,
+      py: e.clientY,
+      x: layer.x,
+      y: layer.y,
+      stage: area,
+      padX: box ? (box.width / 2 / area.width) * 100 : 0,
+      padY: box ? (box.height / 2 / area.height) * 100 : 0,
     }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
-  // Clamp the layer's center so its whole box stays inside the photo.
   function moveDrag(e: PointerEvent) {
     const d = drag.current
     if (!d) return
-    const x = clamp(e.clientX - d.dx - d.stage.left, d.halfW, d.stage.width - d.halfW)
-    const y = clamp(e.clientY - d.dy - d.stage.top, d.halfH, d.stage.height - d.halfH)
-    onChange({ x: (x / d.stage.width) * 100, y: (y / d.stage.height) * 100 })
+    onChange({
+      x: clamp(d.x + ((e.clientX - d.px) / d.stage.width) * 100, d.padX, 100 - d.padX),
+      y: clamp(d.y + ((e.clientY - d.py) / d.stage.height) * 100, d.padY, 100 - d.padY),
+    })
   }
 
   function finishEdit(e: FocusEvent<HTMLDivElement>) {
@@ -68,11 +75,12 @@ export default function LayerItem({ layer, selected, editing, onSelect, onEdit, 
     if (e.key === 'Enter' && layer.type === 'text') onEdit(true)
   }
 
-  const position = { left: `${layer.x}%`, top: `${layer.y}%` }
-  const style: CSSProperties =
-    layer.type === 'text'
-      ? { ...position, fontSize: `${layer.size}cqw`, fontFamily: fontStack(layer.font), color: layer.color }
-      : position
+  // Position is only CSS variables; Stage.css decides how they turn into a place on the photo.
+  const style = {
+    '--x': layer.x,
+    '--y': layer.y,
+    ...(layer.type === 'text' && { fontSize: `${layer.size}cqw`, fontFamily: fontStack(layer.font), color: layer.color }),
+  } as CSSProperties
 
   return (
     <div

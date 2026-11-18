@@ -9,3 +9,6 @@ export type Layer = TextLayer | ImageLayer
 
 export type NewLayer = Omit<TextLayer, 'id' | 'x' | 'y'> | Omit<ImageLayer, 'id' | 'x' | 'y'>
 export type LayerPatch = Partial<Omit<TextLayer, 'id' | 'type'>>
+
+// Which tab keeps items inside the photo: JavaScript (measures while dragging) or CSS (translate: clamp()).
+export type ContainMode = 'js' | 'css'

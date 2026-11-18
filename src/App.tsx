@@ -3,16 +3,18 @@ import BeforeAfter from './components/BeforeAfter.tsx'
 import FileButton from './components/FileButton.tsx'
 import FontLoader from './components/FontLoader.tsx'
 import LayerProps from './components/LayerProps.tsx'
+import ModeTabs from './components/ModeTabs.tsx'
 import Stage from './components/Stage.tsx'
 import StickerPicker from './components/StickerPicker.tsx'
 import { loadImage, renderPng } from './lib/canvas.ts'
-import type { Layer, LayerPatch, NewLayer, Photo } from './types.ts'
+import type { ContainMode, Layer, LayerPatch, NewLayer, Photo } from './types.ts'
 import './App.css'
 
 const FONTS = ['Arial', 'Impact', 'Georgia', 'Times New Roman', 'Courier New', 'Verdana', 'Trebuchet MS', 'Comic Sans MS']
 let nextId = 1
 
 export default function App() {
+  const [mode, setMode] = useState<ContainMode>('js')
   const [photo, setPhoto] = useState<Photo | null>(null)
   const [layers, setLayers] = useState<Layer[]>([])
   const [selected, setSelected] = useState<number | null>(null)
@@ -53,7 +55,7 @@ export default function App() {
 
   async function exportPng() {
     if (!photo) return
-    const url = URL.createObjectURL(await renderPng(photo.src, layers))
+    const url = URL.createObjectURL(await renderPng(photo.src, layers, mode === 'css'))
     const a = document.createElement('a')
     a.href = url
     a.download = 'edited.png'
@@ -64,7 +66,7 @@ export default function App() {
   async function openPreview() {
     if (!photo) return
     setSelected(null)
-    setPreview(URL.createObjectURL(await renderPng(photo.src, layers)))
+    setPreview(URL.createObjectURL(await renderPng(photo.src, layers, mode === 'css')))
   }
 
   function closePreview() {
@@ -76,6 +78,7 @@ export default function App() {
     <div className="app">
       <aside>
         <h1>Photo Text</h1>
+        <ModeTabs mode={mode} onChange={setMode} />
         <FileButton accept="image/*" onFile={openPhoto}>
           {photo ? 'Replace image' : 'Add image'}
         </FileButton>
@@ -104,9 +107,10 @@ export default function App() {
         )}
       </aside>
 
-      <main>
+      <main role="tabpanel">
         {photo ? (
           <Stage
+            mode={mode}
             photo={photo}
             layers={layers}
             selected={selected}

@@ -1,7 +1,18 @@
-/* The stage is exactly the displayed photo; layers use % positions and cqw sizes so they scale with it. */
-.stage { position: relative; aspect-ratio: var(--ar); width: min(100%, calc((100vh - 48px) * var(--ar))); container-type: inline-size; overflow: hidden; user-select: none; touch-action: none; }
+/* The stage is exactly the displayed photo. It is a size container, so 1cqw/1cqh = 1% of the photo's width/height. */
+.stage { position: relative; aspect-ratio: var(--ar); width: min(100%, calc((100vh - 48px) * var(--ar))); container-type: size; overflow: hidden; user-select: none; touch-action: none; }
 .stage > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
-.layer { position: absolute; translate: -50% -50%; white-space: pre; line-height: 1.2; cursor: grab; }
+
+/* Both tabs: --x/--y (0-100) are where the item's center wants to be. */
+.layer { position: absolute; left: calc(var(--x) * 1%); top: calc(var(--y) * 1%); translate: -50% -50%; white-space: pre; text-align: center; line-height: 1.2; cursor: grab; }
+
+/* CSS tab: shift by -50% of the item to center it, but never past the photo's edges.
+   Left edge >= 0 needs translate >= -x; right edge <= 100% needs translate <= (100 - x) - item width. */
+.stage.css-contain .layer {
+  translate:
+    clamp(calc(var(--x) * -1cqw), -50%, calc((100 - var(--x)) * 1cqw - 100%))
+    clamp(calc(var(--y) * -1cqh), -50%, calc((100 - var(--y)) * 1cqh - 100%));
+}
+
 .layer:active { cursor: grabbing; }
 .layer img { display: block; }
 .layer:focus { outline: none; }
